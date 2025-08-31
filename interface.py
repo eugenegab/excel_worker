@@ -61,7 +61,7 @@ def create_gui():
     """Создание интерфейса"""
     root = tk.Tk()
     root.title("Excel Processor")
-    root.geometry("700x200")
+    root.geometry("600x250")
     root.resizable(False, False)
 
     # --- путь к файлу ---
