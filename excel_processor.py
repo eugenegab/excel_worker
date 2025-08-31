@@ -22,15 +22,20 @@ class ExcelProcessor:
     - извлекать метаданные с листа.
     """
 
-    WANTED_FIELDS: Tuple[str, ...] = ("ФИО", "Должность", "Отдел", "Дата найма", "Зарплата")
-
-    def __init__(self, filepath: str, field_name: str, value: Any, output_path: str = '') -> None:
+    def __init__(self,
+                 filepath: str,
+                 field_name: str,
+                 value: Any,
+                 output_path: str='',
+                 wanted_fields: list=None) -> None:
         """
         :param filepath: Путь к Excel-файлу
         :param field_name: Название поля, по которому будет фильтрация
         :param value: Значение для фильтрации
         :param output_path: Путь для сохранения изменённого файла (по умолчанию — рядом с исходным)
         """
+        if wanted_fields is None:
+            wanted_fields = ["фио", "должность", "отдел", "дата найма", "зарплата"]
         try:
             self.wb = load_workbook(filepath, data_only=True)
         except PermissionError:
@@ -40,9 +45,12 @@ class ExcelProcessor:
         if output_path and not os.path.splitext(output_path)[1]:
             output_path = f'{output_path}.xlsx'
         self.output_path: str = output_path or os.path.splitext(filepath)[0] + f'_{str(uuid.uuid4())[:8]}.xlsx'
-        self.field_name: str = field_name
+        self.field_name: str = field_name.lower()
         self.value: Any = value
         self.fieldnames: List[str] = []
+        self.wanted_fields = wanted_fields
+        if self.field_name not in self.wanted_fields:
+            self.wanted_fields.append(self.field_name)
 
     def process(self):
         """
@@ -74,7 +82,10 @@ class ExcelProcessor:
             except StopIteration:
                 raise TablesNotFound('Ни одной таблицы не найдено')
             tuple_of_fields = next(raw_data)
-            self.fieldnames = list([cell.value for cell in tuple_of_fields])
+            self.fieldnames = [cell.value for cell in tuple_of_fields]
+            fields_names_lowercase = [field.lower() for field in self.fieldnames]
+            if any(wanted_field not in fields_names_lowercase for wanted_field in self.wanted_fields):
+                raise FieldNotFound('Введены некорректные поля таблицы')
             data = self._format_data(raw_data)
             filtered_data = self._filter_data(data)
             try:
@@ -82,7 +93,7 @@ class ExcelProcessor:
                 filtered_data = chain([first_row], filtered_data)
             except StopIteration:
                 raise RowsNotFound('Ни одной записи с указанным значением не найдено')
-            prepared_data = self._del_fields(filtered_data)
+            # prepared_data = self._del_fields(filtered_data)
 
             # Извлекаем метаданные
             meta_data = self._get_meta_data(sheet)
@@ -98,7 +109,7 @@ class ExcelProcessor:
                     ws.column_dimensions[col_letter].width = len(str(cell.value)) + 10
 
             # Добавляем строку с заголовками таблицы и берем индекс этой строки, чтобы задать соответствующие стили
-            fields = list(field for field in self.fieldnames if field in self.WANTED_FIELDS)
+            fields = list(field for field in self.fieldnames if field.lower() in self.wanted_fields)
             ws.append(fields)
             new_row = ws.max_row
             len_rows = len(fields)
@@ -107,8 +118,8 @@ class ExcelProcessor:
                 cell.font = Font(bold=True)
 
             # Заносим данные таблицы
-            for row in prepared_data:
-                ws.append(list(cell.value for cell in row.values()))
+            for row in filtered_data:
+                ws.append(list(cell.value for key, cell in row.items() if key in self.wanted_fields))
 
             # Добавляем стили к таблице. К сожалению, у метода append нет возможности сразу задать стили к строкам.
             for row_idx in range(new_row, ws.max_row + 1):
@@ -124,21 +135,21 @@ class ExcelProcessor:
                                   " или у вас нет прав для работы с ним.")
         return "Готово"
 
-    def _del_fields(self, data) -> Generator[Dict[str, Any], None, None]:
-        """
-        Удаляет из строк все поля, кроме нужных.
-        """
-        for row in data:
-            for field in self.fieldnames:  # приводим к list, чтобы не менять итерируемое множество
-                if field not in self.WANTED_FIELDS:
-                    row.pop(field, None)
-            yield row
+    # def _del_fields(self, data) -> Generator[Dict[str, Any], None, None]:
+    #     """
+    #     Удаляет из строк все поля, кроме нужных.
+    #     """
+    #     for row in data:
+    #         for field in self.fieldnames:  # приводим к list, чтобы не менять итерируемое множество
+    #             if field.lower() not in self.wanted_fields:
+    #                 row.pop(field, None)
+    #         yield row
 
     def _filter_data(self, data: Generator[Dict[str, Any], None, None]) -> Generator[Dict[str, Any], None, None]:
         """
         Фильтрует строки таблицы по значению в указанном поле.
         """
-        if any(str(self.field_name).lower() == str(field).lower() for field in self.fieldnames):
+        if any(self.field_name == str(field).lower() for field in self.fieldnames):
             for row in data:
                 if str(row[self.field_name].value) == self.value:
                     yield row
@@ -151,7 +162,7 @@ class ExcelProcessor:
         """
         is_table = False
         for row in sheet.iter_rows():
-            is_table = is_table or any(cell.value in self.WANTED_FIELDS for cell in row)
+            is_table = is_table or any(str(cell.value).lower() in self.wanted_fields for cell in row)
             if is_table:
                 yield row
 
@@ -160,7 +171,7 @@ class ExcelProcessor:
         Преобразует список строк таблицы в список словарей.
         """
         for row in data:
-            yield {field_name: cell for field_name, cell in zip(self.fieldnames, row)}
+            yield {field_name.lower(): cell for field_name, cell in zip(self.fieldnames, row)}
 
     def _get_meta_data(self, sheet: Worksheet) -> Generator[Any, None, None]:
         """
@@ -171,6 +182,6 @@ class ExcelProcessor:
         """
         is_table = False
         for row in sheet.iter_rows():
-            is_table = is_table or any(cell.value in self.WANTED_FIELDS for cell in row)
+            is_table = is_table or any(str(cell.value).lower() in self.wanted_fields for cell in row)
             if not is_table:
                 yield row
