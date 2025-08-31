@@ -68,6 +68,11 @@ class ExcelProcessor:
 
             # Извлекаем строки самой таблицы и фильтруем их
             raw_data = self._rows_of_table(sheet)
+            try:
+                first_raw = next(raw_data)
+                raw_data = chain([first_raw], raw_data)
+            except StopIteration:
+                raise TablesNotFound('Ни одной таблицы не найдено')
             tuple_of_fields = next(raw_data)
             self.fieldnames = list([cell.value for cell in tuple_of_fields])
             data = self._format_data(raw_data)
@@ -150,7 +155,7 @@ class ExcelProcessor:
             if is_table:
                 yield row
 
-    def _format_data(self, data: Generator[tuple, None, None]) -> Generator[Dict[str, Any], None, None]:
+    def _format_data(self, data) -> Generator[Dict[str, Any], None, None]:
         """
         Преобразует список строк таблицы в список словарей.
         """
