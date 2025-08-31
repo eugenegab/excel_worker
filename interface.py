@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from cast_exceptions import FieldNotFound
 from excel_processor import ExcelProcessor  # твой класс
 
 
