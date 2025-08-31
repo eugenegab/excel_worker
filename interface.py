@@ -8,7 +8,7 @@ def choose_file(entry_field: tk.Entry) -> None:
     """Открывает диалог выбора файла и записывает путь в поле ввода"""
     filepath = filedialog.askopenfilename(
         title="Выберите Excel-файл",
-        filetypes=(("Excel файлы", "*.xlsx"), ("Все файлы", "*.*"))
+        filetypes=(("Excel файлы", "*.xlsx"),)
     )
     if filepath:
         entry_field.delete(0, tk.END)
@@ -20,7 +20,7 @@ def enter_new_filepath(entry_field: tk.Entry) -> None:
     filepath = filedialog.asksaveasfilename(
         title="Сохранить файл как...",
         defaultextension=".xlsx",
-        filetypes=(("Excel файлы", "*.xlsx"), ("Все файлы", "*.*"))
+        filetypes=(("Excel файлы", "*.xlsx"),)
     )
     if filepath:
         entry_field.delete(0, tk.END)
