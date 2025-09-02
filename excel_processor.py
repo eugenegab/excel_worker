@@ -138,9 +138,10 @@ class ExcelProcessor:
         """
         Фильтрует строки таблицы по значению в указанном поле.
         """
-        if any(str(self.field_name).lower() == str(field).lower() for field in self.fieldnames):
+        field = list(filter(lambda x: x.lower() == self.field_name.lower(), self.fieldnames))
+        if field:
             for row in data:
-                if str(row[self.field_name].value) == self.value:
+                if str(row[field[0]].value) == self.value:
                     yield row
         else:
             raise FieldNotFound('Указанного поля в таблице нет')
