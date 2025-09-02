@@ -70,9 +70,9 @@ def create_gui():
     tk.Button(root, text="Выбрать...", command=lambda: choose_file(file_entry)).grid(row=0, column=2, padx=5, pady=5)
 
     # --- имя файла с результатом ---
-    tk.Label(root, text="Введите название нового файла").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+    tk.Label(root, text="Сохранить результат:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
     output_file = tk.Entry(root, width=40)
-    output_file.grid(row=1, column=1, padx=5, pady=5, columnspan=2)
+    output_file.grid(row=1, column=1, padx=5, pady=5)
     tk.Button(root, text="Выбрать...", command=lambda: enter_new_filepath(output_file)).grid(row=1, column=2, padx=5, pady=5)
 
     # --- Необходимые поля таблицы ---
